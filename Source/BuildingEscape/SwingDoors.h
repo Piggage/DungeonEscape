@@ -40,10 +40,12 @@ private:
     float StartYawRight;
     float CurrentYawRight;
     float TargetYawRight;
+    float TotalYawRight = 0.f;
     FRotator CurrentRotationLeft;
     float StartYawLeft;
     float CurrentYawLeft;
     float TargetYawLeft;
+    float TotalYawLeft = 0.f;
     float TargetMass;
     float Mass;
     float TimeLastOpened = 0.f;

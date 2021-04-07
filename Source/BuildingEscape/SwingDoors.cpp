@@ -44,10 +44,10 @@ void USwingDoors::InitialiseDoorValues()
 {
     // Get start yaw value for calculating target yaw
     StartYawRight = GetOwner()->GetActorRotation().Yaw;
-    StartYawLeft = GetOwner()->GetActorRotation().Yaw - 180.f;
+    StartYawLeft = GetOwner()->GetActorRotation().Yaw;
     // Calculate target yaw for OpenDoor method
     TargetYawRight = StartYawRight + TargetYawIncrease;
-    TargetYawLeft = StartYawLeft - TargetYawIncrease;
+    TargetYawLeft = StartYawLeft + TargetYawIncrease;
 }
 
 void USwingDoors::FindAudioComponent()
@@ -108,25 +108,24 @@ void USwingDoors::TickComponent(float DeltaTime, ELevelTick TickType, FActorComp
 
     // Check if Actors are overlapping the pressure plate
     if(ActorsAreOnPressurePlate()){
-        UE_LOG(LogTemp, Warning, TEXT("Actor on pressureplate..."));
         CalculateMassOfOverlappingActors();
         if(Mass == TargetMass){
-            OpenDoor(DeltaTime);
-            // Update time last opened for the timer below
-            TimeLastOpened = GetWorld()->GetTimeSeconds();
+            if(TotalYawRight > -90.f){
+                OpenDoor(DeltaTime);
+                // Update time last opened for the timer below
+                TimeLastOpened = GetWorld()->GetTimeSeconds();
+            }
         }
     }else{
-        UE_LOG(LogTemp, Warning, TEXT("Actor not on pressureplate..."));
-    }
-    // If door is open, wait delay until closing
-    if(CurrentYawRight != StartYawRight)
-    {
-        // Wait for DoorCloseDelay seconds after the pressure plate lifts
-        if((GetWorld()->GetTimeSeconds() - TimeLastOpened) > DoorCloseDelay)
+        // If door is open, wait delay until closing
+        if(TotalYawRight < 0.f)
         {
-            // Close door to the start yaw
-            CloseDoor(DeltaTime);
-            UE_LOG(LogTemp, Warning, TEXT("StartYawRight: %f. CurrentYawRight: %f."), StartYawRight, CurrentYawRight);
+            // Wait for DoorCloseDelay seconds after the pressure plate lifts
+            if((GetWorld()->GetTimeSeconds() - TimeLastOpened) > DoorCloseDelay)
+            {
+                // Close door to the start yaw
+                CloseDoor(DeltaTime);
+            }
         }
     }
 }
@@ -149,11 +148,9 @@ void USwingDoors::CalculateMassOfOverlappingActors()
 
 void USwingDoors::OpenDoor(float DeltaTime)
 {
-    // CurrentRotationRight = GetOwner()->GetActorRotation();
-    // CurrentRotationLeft = LeftDoor->GetActorRotation();
-
+    UE_LOG(LogTemp, Warning, TEXT("TotalYawRight: %f\n TotalYawLeft: %f\n"), TotalYawRight, TotalYawLeft);
     // Binary switch for playing door sound and door must be closed
-    if(bPlayDoorOpen && CurrentRotationRight.Yaw == StartYawRight)
+    if(bPlayDoorOpen && TotalYawRight >= 0.f)
     {
         if(DoorSound == nullptr){return;}
         bPlayDoorOpen = false;
@@ -163,41 +160,34 @@ void USwingDoors::OpenDoor(float DeltaTime)
     // Calculate the interpolated value of the yaw
     CurrentYawRight = FMath::Lerp(StartYawRight, TargetYawRight, DeltaTime * OpenSpeed);
     CurrentYawLeft = FMath::Lerp(StartYawLeft, TargetYawLeft, DeltaTime * OpenSpeed);
+    TotalYawRight -= CurrentYawRight;
+    TotalYawLeft -= CurrentYawLeft;
     //Apply the new Yaw to the current rotation
     CurrentRotationRight.Yaw = CurrentYawRight;
     CurrentRotationLeft.Yaw = CurrentYawLeft;
-    UE_LOG(LogTemp, Warning, TEXT("Current Yaw Right: %f, Target Yaw Right: "), CurrentRotationRight.Yaw, TargetYawRight);
-    //RightDoor->SetActorRotation(CurrentRotationRight);
+
     RightDoor->AddRelativeRotation(CurrentRotationRight);
-    //LeftDoor->SetActorRotation(CurrentRotationLeft);
-    LeftDoor->AddRelativeRotation(CurrentRotationLeft);
-    UE_LOG(LogTemp, Warning, TEXT("Opening Door..."));
+    LeftDoor->AddRelativeRotation(CurrentRotationLeft * -1.f);
 }
 
 void USwingDoors::CloseDoor(float DeltaTime)
 {
-    // CurrentRotationRight = RightDoor->GetActorRotation();
-    // CurrentRotationLeft = LeftDoor->GetActorRotation();
     // Calculate the interpolated value of the yaw
-    CurrentYawRight = FMath::Lerp(TargetYawRight, StartYawRight, DeltaTime * CloseSpeed);
-    CurrentYawLeft = FMath::Lerp(TargetYawLeft, StartYawLeft, DeltaTime * CloseSpeed);
+    CurrentYawRight = FMath::Lerp(StartYawRight, TargetYawRight, DeltaTime * CloseSpeed);
+    CurrentYawLeft = FMath::Lerp(StartYawLeft, TargetYawLeft, DeltaTime * CloseSpeed);
+    TotalYawRight += CurrentYawRight;
+    TotalYawLeft += CurrentYawLeft;
     //Apply the new Yaw to the current rotation
     CurrentRotationRight.Yaw = CurrentYawRight;
     CurrentRotationLeft.Yaw = CurrentYawLeft;
 
-    // RightDoor->SetActorRotation(CurrentRotationRight);
-    RightDoor->AddRelativeRotation(CurrentRotationRight);
-    // LeftDoor->SetActorRotation(CurrentRotationLeft);
+    RightDoor->AddRelativeRotation(CurrentRotationRight * -1.f);
     LeftDoor->AddRelativeRotation(CurrentRotationLeft);
     /*
      Binary switch for playing door sound and door must be closed.
      Exponential movement towards close, so slams door if it gets within 10 degrees.
      */
-    if(bPlayDoorClose /*&& CurrentYawRight < StartYawRight + 10.f*/){
-        // CurrentRotationRight.Yaw = StartYawRight;
-        // CurrentRotationLeft.Yaw = StartYawLeft;
-        // RightDoor->AddRelativeRotation(CurrentRotationRight);
-        // LeftDoor->AddRelativeRotation(CurrentRotationLeft);
+    if(bPlayDoorClose && TotalYawRight >= 0.f){
         if(DoorSound == nullptr){return;}
         bPlayDoorClose = false;
         bPlayDoorOpen = true;
