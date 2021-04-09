@@ -59,7 +59,7 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
     if(PhysicsHandle->GrabbedComponent)
     {
         UpdateViewPointVectors();
-        PhysicsHandle->SetTargetLocation(LineTraceEnd);
+        PhysicsHandle->SetTargetLocationAndRotation(LineTraceEnd, PlayerViewPointRotation);
     }
 }
 
