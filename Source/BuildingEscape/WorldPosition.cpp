@@ -21,12 +21,6 @@ UWorldPosition::UWorldPosition()
 void UWorldPosition::BeginPlay()
 {
 	Super::BeginPlay();
-
-    UE_LOG(LogTemp, Warning, TEXT("This is a warning!"));
-    FString Name = GetOwner() -> GetName();
-    UE_LOG(LogTemp, Warning, TEXT("Actor Name is: %s"), *Name);
-    FString ObjectPosition = GetOwner() -> GetActorLocation().ToString();
-    UE_LOG(LogTemp, Warning, TEXT("%s is at %s"), *Name, *ObjectPosition);
 }
 
 
